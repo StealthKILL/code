@@ -1,0 +1,188 @@
+use iced::pure::{button, column, row, text, Element, Sandbox};
+use iced::{Alignment, Length, Settings};
+use std::process;
+
+#[derive(Default)]
+struct Cashier {
+    order_number : u32,
+    food_list : Vec<(String, u32, u32)>,
+}
+#[derive(Debug, Clone)]
+enum Message {
+    AddFood(String, u32),   // Add menu with menu name (eg. Cheese burger, Coca cola)
+    Clear,               // Clear the inputs (reset the calculator)
+    Summarize,              // Calculate the result when "=" is pressed
+    Exit,                // Exit the program (when 'X' is pressed)
+}
+
+
+impl Sandbox for Cashier {
+    type Message = Message;
+
+    // Initializes the Calculator application with default values
+    fn new() -> Self {
+        Cashier {
+            //display_value: "0".to_string(),
+            ..Default::default()  // Default values all value
+        }
+    }
+    // The title of the application window
+    fn title(&self) -> String {
+        String::from("Restaurant app")
+    }
+    fn update(&mut self, message: Message) {
+        //let mut all_food : Vec<(String, u32)> = vec![];
+        match message {
+            Message::AddFood(food, price) => {
+                println!("{} : {}$", food, price);
+                let mut in_list = false;
+                if self.food_list.is_empty(){
+                    self.food_list.push((food, price, 1));
+                }
+                else{
+                    for elem in &mut self.food_list{
+                        if elem.0 == food{
+                            elem.2 += 1;
+                            in_list = true;
+                        }
+                    }
+                    if in_list == false{
+                        self.food_list.push((food, price, 1));
+                    }
+                }
+                println!("{:?}", &self.food_list);
+            }
+            Message::Clear => {
+                self.order_number = 0;
+                self.food_list = vec![];
+            }
+            Message::Summarize => {
+                let mut total:u32 = 0;
+                println!("=====Recipt=====");
+                for elem in &self.food_list{
+                    println!("{}      x{}     {}$", elem.0, elem.2, elem.1*elem.2);
+                    total += elem.1*elem.2;
+                }
+                println!("Total");
+                println!("{}$", total);
+            }
+
+            Message::Exit => {
+                // Exit the program when 'X' is pressed
+                process::exit(0);
+            }
+        }
+    }
+    fn view(&self) -> Element<Message> {
+        let font_size:u16 = 25;
+        let title_size:u16 = 30;
+        let padding_size:u16 = 5;
+        let burger_text = text("Burger")
+            .width(Length::Fill)
+            .size(title_size)
+            .horizontal_alignment(iced::alignment::Horizontal::Center);
+        // let fries_and_sides_text = text("Fries & Sides")
+        //     .width(Length::Fill)
+        //     .size(title_size)
+        //     .horizontal_alignment(iced::alignment::Horizontal::Center);
+        let beverage_text = text("Burger")
+            .width(Length::Fill)
+            .size(title_size)
+            .horizontal_alignment(iced::alignment::Horizontal::Center);
+        let cheese_burger_text = text("Cheese Burger")
+            .width(Length::Fill)
+            .size(font_size)
+            .horizontal_alignment(iced::alignment::Horizontal::Center);
+        let beef_burger_text = text("Beef Burger")
+            .width(Length::Fill)
+            .size(font_size)
+            .horizontal_alignment(iced::alignment::Horizontal::Center);
+        let french_fries_text = text("French fries")
+            .width(Length::Fill)
+            .size(font_size)
+            .horizontal_alignment(iced::alignment::Horizontal::Center);
+        let coca_cola_text = text("Coca cola")
+            .width(Length::Fill)
+            .size(font_size)
+            .horizontal_alignment(iced::alignment::Horizontal::Center);
+        let water_text = text("Water")
+            .width(Length::Fill)
+            .size(font_size)
+            .horizontal_alignment(iced::alignment::Horizontal::Center);
+
+
+        let button = |label: &str, msg: Message| {
+            button(text(label))
+                .on_press(msg)          // Trigger the corresponding message when pressed
+                .padding(10)            // Add padding for button sizing
+                .width(Length::Units(60))// Set a fixed width for buttons
+        };
+
+        let burger_zone = column()
+            .push(
+                row()
+                .push(cheese_burger_text)
+                .push(button("add", Message::AddFood("Cheese Burger".to_string(), 99)))
+                .spacing(10)
+                .padding(padding_size),
+            )
+            .push(
+                row()
+                .push(beef_burger_text)
+                .push(button("add", Message::AddFood("Beef Burger".to_string(), 109)))
+                .spacing(10)
+                .padding(padding_size),
+            )
+            .push(
+                row()
+                .push(french_fries_text)
+                .push(button("add", Message::AddFood("French Fries".to_string(), 49)))
+                .spacing(10)
+                .padding(padding_size),
+            )
+            .spacing(5);
+        let beverage_zone = column()
+            .push(
+                row()
+                .push(coca_cola_text)
+                .push(button("add", Message::AddFood("Coca Cola".to_string(), 30)))
+                .spacing(10)
+                .padding(padding_size),
+            )
+            .push(
+                row()
+                .push(water_text)
+                .push(button("add", Message::AddFood("Water".to_string(), 10)))
+                .spacing(10)
+                .padding(padding_size),
+            )
+            .spacing(10);
+        let control_panel = column()
+            .push(
+                row()
+                .push(button("clear", Message::Clear))
+                .push(button("finish", Message::Summarize))
+                .push(button("exit", Message::Exit))
+                .spacing(10)
+                .padding(padding_size),
+            )
+            .spacing(10);
+
+        
+        let content = column()
+            .push(burger_text)
+            .push(burger_zone)
+            .push(beverage_text)
+            .push(beverage_zone)
+            .push(control_panel)
+            .align_items(Alignment::Center)
+            .spacing(10);  // Space between the elements
+        // Return the complete layout as an Element
+        content.into()
+    }
+}
+
+fn main() {
+    // Run the Calculator application with default settings
+    Cashier::run(Settings::default());
+}
