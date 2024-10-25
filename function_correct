@@ -74,112 +74,146 @@ impl Sandbox for Cashier {
         }
     }
     fn view(&self) -> Element<Message> {
-        let font_size:u16 = 25;
-        let title_size:u16 = 30;
-        let padding_size:u16 = 5;
-        let burger_text = text("Burger")
-            .width(Length::Fill)
+        let font_size: u16 = 25;
+        let title_size: u16 = 40;  // Increased size for titles
+        let padding_size: u16 = 10;
+    
+        // Titles
+        let hamburger_title = text("1. Hamburger")
             .size(title_size)
-            .horizontal_alignment(iced::alignment::Horizontal::Center);
-        // let fries_and_sides_text = text("Fries & Sides")
-        //     .width(Length::Fill)
-        //     .size(title_size)
-        //     .horizontal_alignment(iced::alignment::Horizontal::Center);
-        let beverage_text = text("Burger")
-            .width(Length::Fill)
+            .horizontal_alignment(iced::alignment::Horizontal::Left);
+        let fries_and_sides_title = text("2. Fries & Sides")
+        .size(title_size)
+        .horizontal_alignment(iced::alignment::Horizontal::Left);
+        let beverage_title = text("3. Beverage")
             .size(title_size)
-            .horizontal_alignment(iced::alignment::Horizontal::Center);
-        let cheese_burger_text = text("Cheese Burger")
-            .width(Length::Fill)
+            .horizontal_alignment(iced::alignment::Horizontal::Left);
+    
+        // Food Item Texts
+        let cheese_burger_text = text("Cheese burger")
             .size(font_size)
-            .horizontal_alignment(iced::alignment::Horizontal::Center);
-        let beef_burger_text = text("Beef Burger")
             .width(Length::Fill)
+            .horizontal_alignment(iced::alignment::Horizontal::Left);
+        let beef_burger_text = text("Beef burger")
             .size(font_size)
-            .horizontal_alignment(iced::alignment::Horizontal::Center);
+            .width(Length::Fill)
+            .horizontal_alignment(iced::alignment::Horizontal::Left);
+        let chicken_nuggets_text = text("Chicken nuggets")
+            .size(font_size)
+            .width(Length::Fill)
+            .horizontal_alignment(iced::alignment::Horizontal::Left);
         let french_fries_text = text("French fries")
-            .width(Length::Fill)
             .size(font_size)
-            .horizontal_alignment(iced::alignment::Horizontal::Center);
-        let coca_cola_text = text("Coca cola")
             .width(Length::Fill)
+            .horizontal_alignment(iced::alignment::Horizontal::Left);
+        let coca_cola_text = text("Coca Cola")
             .size(font_size)
-            .horizontal_alignment(iced::alignment::Horizontal::Center);
+            .width(Length::Fill)
+            .horizontal_alignment(iced::alignment::Horizontal::Left);
+        let coffee_text = text("Coffee")
+            .size(font_size)
+            .width(Length::Fill)
+            .horizontal_alignment(iced::alignment::Horizontal::Left);
         let water_text = text("Water")
-            .width(Length::Fill)
             .size(font_size)
-            .horizontal_alignment(iced::alignment::Horizontal::Center);
-
-
+            .width(Length::Fill)
+            .horizontal_alignment(iced::alignment::Horizontal::Left);
+    
+        // Button template
         let button = |label: &str, msg: Message| {
             button(text(label))
-                .on_press(msg)          // Trigger the corresponding message when pressed
-                .padding(10)            // Add padding for button sizing
-                .width(Length::Units(60))// Set a fixed width for buttons
+                .on_press(msg)
+                .padding(5)
+                .width(Length::Units(60))
         };
-
-        let burger_zone = column()
+    
+        // Hamburger section
+        let hamburger_section = column()
+            .push(hamburger_title)
             .push(
                 row()
-                .push(cheese_burger_text)
-                .push(button("add", Message::AddFood("Cheese Burger".to_string(), 99)))
-                .spacing(10)
-                .padding(padding_size),
+                    .push(cheese_burger_text)
+                    .push(text("(99$)").size(font_size))  // Adding price
+                    .push(button("Add", Message::AddFood("Cheese burger".to_string(), 99)))
+                    .spacing(10),
             )
             .push(
                 row()
-                .push(beef_burger_text)
-                .push(button("add", Message::AddFood("Beef Burger".to_string(), 109)))
-                .spacing(10)
-                .padding(padding_size),
-            )
-            .push(
-                row()
-                .push(french_fries_text)
-                .push(button("add", Message::AddFood("French Fries".to_string(), 49)))
-                .spacing(10)
-                .padding(padding_size),
+                    .push(beef_burger_text)  // Reuse the cheese burger text for multiple lines
+                    .push(text("(109$)").size(font_size))
+                    .push(button("Add", Message::AddFood("Beef Burger".to_string(), 109)))
+                    .spacing(10),
             )
             .spacing(5);
-        let beverage_zone = column()
+        // Fries and Sides
+        let fries_and_side_section = column()
+            .push(fries_and_sides_title)
             .push(
                 row()
-                .push(coca_cola_text)
-                .push(button("add", Message::AddFood("Coca Cola".to_string(), 30)))
-                .spacing(10)
-                .padding(padding_size),
+                    .push(french_fries_text)
+                    .push(text("(50$)").size(font_size))  // Adding price
+                    .push(button("Add", Message::AddFood("French Fries".to_string(), 50)))
+                    .spacing(10),
             )
             .push(
                 row()
-                .push(water_text)
-                .push(button("add", Message::AddFood("Water".to_string(), 10)))
-                .spacing(10)
-                .padding(padding_size),
+                    .push(chicken_nuggets_text)  // Reuse the cheese burger text for multiple lines
+                    .push(text("(60$)").size(font_size))
+                    .push(button("Add", Message::AddFood("Chicken nuggets".to_string(), 60)))
+                    .spacing(10),
             )
-            .spacing(10);
+            .spacing(5);
+    
+        // Beverage section
+        let beverage_section = column()
+            .push(beverage_title)
+            .push(
+                row()
+                    .push(coca_cola_text)
+                    .push(text("(30$)").size(font_size))
+                    .push(button("Add", Message::AddFood("Coca Cola".to_string(), 30)))
+                    .spacing(10),
+            )
+            .push(
+                row()
+                    .push(coffee_text)
+                    .push(text("(35$)").size(font_size))
+                    .push(button("Add", Message::AddFood("Coffee".to_string(), 35)))
+                    .spacing(10),
+            )
+            .push(
+                row()
+                    .push(water_text)
+                    .push(text("(10$)").size(font_size))
+                    .push(button("Add", Message::AddFood("Water".to_string(), 10)))
+                    .spacing(10),
+            )
+            .spacing(5);
+    
+        // Control Panel Section
         let control_panel = column()
             .push(
                 row()
-                .push(button("clear", Message::Clear))
-                .push(button("finish", Message::Summarize))
-                .push(button("exit", Message::Exit))
-                .spacing(10)
-                .padding(padding_size),
+                    .push(button("Clear", Message::Clear))
+                    .push(button("Finish", Message::Summarize))
+                    .push(button("Exit", Message::Exit))
+                    .spacing(10),
             )
             .spacing(10);
-
-        
+    
+        // Combine all sections into the final layout
         let content = column()
-            .push(burger_text)
-            .push(burger_zone)
-            .push(beverage_text)
-            .push(beverage_zone)
+            .push(hamburger_section)
+            .push(fries_and_side_section)
+            .push(beverage_section)
             .push(control_panel)
             .align_items(Alignment::Center)
-            .spacing(10);  // Space between the elements
-        // Return the complete layout as an Element
+            .spacing(20)
+            .padding(10);  // Increase spacing between sections
+    
         content.into()
     }
+    
 }
 
 fn main() {
