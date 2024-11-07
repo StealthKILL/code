@@ -1,0 +1,343 @@
+use iced::pure::{button, column, row, text, Element, Sandbox};
+use iced::{Alignment, Length, Settings};
+use std::process;
+
+#[derive(Default)]
+struct Cashier {
+    order_number: u32,
+    temp_food_list: Vec<(String, u32, u32)>, // Temporary list for the main screen
+    food_list: Vec<Order>, // Final list for "Order History of Today"
+    preparing_orders: Vec<Order>, // List for Preparing Orders
+    active_tab: Tab,
+    editing_order_id: Option<u32>, // Track which order is being edited
+    editing_order_items: Vec<(String, u32, u32)>, // Items in the currently edited order
+    discount_code: String, // Code entered by user
+    discount_value: u32, // Discount value applied
+}
+
+#[derive(Debug, Clone)]
+struct Order {
+    id: u32,
+    items: Vec<(String, u32, u32)>, // (Food Name, Price, Quantity)
+    status: OrderStatus,
+}
+
+#[derive(Debug, Clone)]
+enum OrderStatus {
+    Preparing,
+    Finished,
+}
+
+#[derive(Debug, Clone)]
+enum Tab {
+    DefaultMenu,
+    PreparingOrders,
+    OrderHistoryOfToday,
+}
+
+// Implement `Default` for `Tab`
+impl Default for Tab {
+    fn default() -> Self {
+        Tab::DefaultMenu
+    }
+}
+
+#[derive(Debug, Clone)]
+enum Message {
+    AddFood(String, u32),
+    RemoveFood(String),  // Remove food from temp list
+    Clear,
+    Finish,  // Moves temp list items to preparing orders
+    RemoveOrder(u32),   // Remove an order by ID
+    ChangeStatus(u32, OrderStatus), // Change the status of an order
+    EditOrder(u32),     // Start editing an order
+    Exit,
+    SwitchTab(Tab),
+}
+
+impl Sandbox for Cashier {
+    type Message = Message;
+
+    fn new() -> Self {
+        Cashier {
+            ..Default::default()
+        }
+    }
+
+    fn title(&self) -> String {
+        String::from("Restaurant App")
+    }
+
+    fn update(&mut self, message: Message) {
+        match message {
+            Message::AddFood(food, price) => {
+                let mut in_temp_list = false;
+
+                // Add food item to temp list, increasing quantity if it already exists
+                for item in &mut self.temp_food_list {
+                    if item.0 == food {
+                        item.2 += 1;
+                        in_temp_list = true;
+                        break;
+                    }
+                }
+                if !in_temp_list {
+                    self.temp_food_list.push((food, price, 1));
+                }
+            }
+            Message::RemoveFood(food) => {
+                self.temp_food_list.retain(|item| item.0 != food);
+            }
+            Message::Clear => {
+                self.temp_food_list.clear();
+            }
+            Message::Finish => {
+                if !self.temp_food_list.is_empty() {
+                    self.order_number += 1; // Increment order number
+                    let order = Order {
+                        id: self.order_number,
+                        items: self.temp_food_list.clone(),
+                        status: OrderStatus::Preparing,
+                    };
+                    self.preparing_orders.push(order); // Move to preparing orders
+                    self.temp_food_list.clear();
+                }
+            }
+            Message::RemoveOrder(id) => {
+                self.preparing_orders.retain(|order| order.id != id);
+            }
+            Message::ChangeStatus(id, status) => {
+                if let Some(order) = self.preparing_orders.iter_mut().find(|order| order.id == id) {
+                    order.status = status.clone(); 
+                    if let OrderStatus::Finished = status {
+                        self.food_list.push(order.clone()); // Clone to move to finished orders
+                        self.preparing_orders.retain(|order| order.id != id); // Remove from preparing orders
+                    }
+                }
+            }
+            Message::EditOrder(id) => {
+                if let Some(order) = self.preparing_orders.iter().find(|order| order.id == id) {
+                    self.editing_order_id = Some(id); // Set the editing order ID
+                    self.editing_order_items = order.items.clone(); // Store the items for editing
+                    self.temp_food_list.extend(order.items.clone()); // Bring back the items to the basket
+                }
+            }
+            Message::Exit => {
+                process::exit(0);
+            }
+            Message::SwitchTab(tab) => {
+                self.active_tab = tab;
+                self.editing_order_id = None; // Reset editing order when switching tabs
+                self.editing_order_items.clear(); // Clear editing items
+            }
+        }
+    }
+
+    fn view(&self) -> Element<Message> {
+        let font_size: u16 = 25;
+        let title_size: u16 = 40;
+
+        // Left-Side Tabs for Switching Between Menus
+        let tab_buttons = column()
+            .push(button("Default Menu").on_press(Message::SwitchTab(Tab::DefaultMenu)))
+            .push(button("Preparing Orders").on_press(Message::SwitchTab(Tab::PreparingOrders)))
+            .push(button("Order History of Today").on_press(Message::SwitchTab(Tab::OrderHistoryOfToday)))
+            .align_items(Alignment::Start)
+            .spacing(10);
+
+        // Right-Side Content Based on Active Tab
+        let content = match self.active_tab {
+            Tab::DefaultMenu => self.view_default_menu(font_size, title_size),
+            Tab::PreparingOrders => self.view_preparing_orders(),
+            Tab::OrderHistoryOfToday => self.view_order_history_of_today(),
+        };
+
+        // Combine Tabs and Content
+        let layout = row()
+            .push(tab_buttons)
+            .push(content)
+            .spacing(30)
+            .padding(10)
+            .align_items(Alignment::Start);
+
+        layout.into()
+    }
+}
+
+impl Cashier {
+    // Default Menu Content
+// Default Menu Content
+fn view_default_menu(&self, font_size: u16, title_size: u16) -> Element<Message> {
+    let button = |label: &str, msg: Message| {
+        button(text(label))
+            .on_press(msg)
+            .padding(5)
+            .width(Length::Units(60))
+    };
+
+    // Menu sections with add buttons
+    let hamburger_section = column()
+        .push(text("1. Hamburger").size(title_size))
+        .push(
+            row()
+                .push(text("Cheese burger").size(font_size))
+                .push(text("(99$)").size(font_size))
+                .push(button("Add", Message::AddFood("Cheese burger".to_string(), 99)))
+                .spacing(10),
+        )
+        .push(
+            row()
+                .push(text("Beef burger").size(font_size))
+                .push(text("(109$)").size(font_size))
+                .push(button("Add", Message::AddFood("Beef burger".to_string(), 109)))
+                .spacing(10),
+        )
+        .spacing(5);
+
+    let fries_and_side_section = column()
+        .push(text("2. Fries & Sides").size(title_size))
+        .push(
+            row()
+                .push(text("French fries").size(font_size))
+                .push(text("(50$)").size(font_size))
+                .push(button("Add", Message::AddFood("French Fries".to_string(), 50)))
+                .spacing(10),
+        )
+        .push(
+            row()
+                .push(text("Chicken nuggets").size(font_size))
+                .push(text("(60$)").size(font_size))
+                .push(button("Add", Message::AddFood("Chicken nuggets".to_string(), 60)))
+                .spacing(10),
+        )
+        .spacing(5);
+
+    let beverage_section = column()
+        .push(text("3. Beverage").size(title_size))
+        .push(
+            row()
+                .push(text("Coca Cola").size(font_size))
+                .push(text("(30$)").size(font_size))
+                .push(button("Add", Message::AddFood("Coca Cola".to_string(), 30)))
+                .spacing(10),
+        )
+        .push(
+            row()
+                .push(text("Coffee").size(font_size))
+                .push(text("(35$)").size(font_size))
+                .push(button("Add", Message::AddFood("Coffee".to_string(), 35)))
+                .spacing(10),
+        )
+        .push(
+            row()
+                .push(text("Water").size(font_size))
+                .push(text("(10$)").size(font_size))
+                .push(button("Add", Message::AddFood("Water".to_string(), 10)))
+                .spacing(10),
+        )
+        .spacing(5);
+
+    // Calculate the total for the basket
+    let basket_total: u32 = self.temp_food_list.iter().map(|item| item.1 * item.2).sum();
+
+    // Display temporary food list (basket) with remove buttons
+    let basket = self.temp_food_list.iter().fold(column().spacing(10), |col, item| {
+        col.push(
+            row()
+                .push(text(format!("{} x{} - {}$", item.0, item.2, item.1 * item.2)).size(font_size))
+                .push(button("Remove", Message::RemoveFood(item.0.clone())))
+                .spacing(10),
+        )
+    });
+
+    // Combine menu sections on the left and basket on the right
+    let content = row()
+        .push(column()
+            .push(hamburger_section)
+            .push(fries_and_side_section)
+            .push(beverage_section))
+        .push(
+            column()
+                .push(text("Basket").size(title_size))
+                .push(basket)
+                .push(text(format!("Total: {}$", basket_total)).size(title_size))
+                .push(button("Finish", Message::Finish).padding(5).width(Length::Units(100))) // Finish button
+                .spacing(20),
+        )
+        .spacing(30)
+        .padding(10)
+        .align_items(Alignment::Start);
+
+    content.into()
+}
+
+
+    // Preparing Orders Tab
+    fn view_preparing_orders(&self) -> Element<Message> {
+        let title_size: u16 = 30;
+
+        // Show Preparing Orders
+        let preparing_orders = self.preparing_orders.iter().fold(column().spacing(10), |col, order| {
+            // Display items in each order
+            let order_items = order.items.iter().fold(column().spacing(5), |items_col, (name, price, quantity)| {
+                items_col.push(text(format!("{} x{} - {}$", name, quantity, price * quantity)).size(20))
+            });
+
+            // If editing, show options to edit the order
+            let edit_button = if self.editing_order_id == Some(order.id) {
+                column()
+                    .push(text("Editing Order").size(20))
+                    .push(button("Finish Editing").on_press(Message::ChangeStatus(order.id, OrderStatus::Finished)))
+                    .push(button("Cancel Editing").on_press(Message::EditOrder(order.id)))
+                    .spacing(10)
+            } else {
+                column().push(button("Edit").on_press(Message::EditOrder(order.id)))
+            };
+
+            col.push(
+                column()
+                    .push(text(format!("Order ID: {} - Status: {:?}", order.id, order.status)).size(title_size))
+                    .push(order_items)
+                    .push(edit_button)
+                    .push(button("Finish Order").on_press(Message::ChangeStatus(order.id, OrderStatus::Finished)))
+                    .spacing(10),
+            )
+        });
+
+        column()
+            .push(text("Preparing Orders").size(title_size))
+            .push(preparing_orders)
+            .spacing(20)
+            .into()
+    }
+
+    // Order History of Today Tab
+    fn view_order_history_of_today(&self) -> Element<Message> {
+        let title_size: u16 = 30;
+
+        // Show Order History
+        let order_history = self.food_list.iter().fold(column().spacing(10), |col, order| {
+            // Display items in each order
+            let order_items = order.items.iter().fold(column().spacing(5), |items_col, (name, price, quantity)| {
+                items_col.push(text(format!("{} x{} - {}$", name, quantity, price * quantity)).size(20))
+            });
+
+            col.push(
+                column()
+                    .push(text(format!("Order ID: {} - Status: {:?}", order.id, order.status)).size(title_size))
+                    .push(order_items)
+                    .spacing(10),
+            )
+        });
+
+        column()
+            .push(text("Order History of Today").size(title_size))
+            .push(order_history)
+            .spacing(20)
+            .into()
+    }
+}
+
+fn main() {
+    Cashier::run(Settings::default());
+}
