@@ -1,6 +1,7 @@
 use iced::pure::{button, column, row, text, Element, Sandbox};
 use iced::{Alignment, Length, Settings};
 use std::process;
+use std::io::Write;
 
 #[derive(Default)]
 struct Cashier {
@@ -53,6 +54,7 @@ enum Message {
     EditOrder(u32),     // Start editing an order
     Exit,
     SwitchTab(Tab),
+    Summary_sale,
 }
 
 impl Sandbox for Cashier {
@@ -108,13 +110,16 @@ impl Sandbox for Cashier {
             }
             Message::ChangeStatus(id, status) => {
                 if let Some(order) = self.preparing_orders.iter_mut().find(|order| order.id == id) {
-                    order.status = status.clone(); 
+                    order.status = status.clone();
                     if let OrderStatus::Finished = status {
-                        self.food_list.push(order.clone()); // Clone to move to finished orders
+                        let finished_order = order.clone(); // Clone the order to avoid double borrow
+                        self.food_list.push(finished_order.clone()); // Clone to move to finished orders
                         self.preparing_orders.retain(|order| order.id != id); // Remove from preparing orders
+                        self.print_receipt(&finished_order); // Call print_receipt with the cloned order
                     }
                 }
             }
+            
             Message::EditOrder(id) => {
                 if let Some(order) = self.preparing_orders.iter().find(|order| order.id == id) {
                     self.editing_order_id = Some(id); // Set the editing order ID
@@ -129,6 +134,9 @@ impl Sandbox for Cashier {
                 self.active_tab = tab;
                 self.editing_order_id = None; // Reset editing order when switching tabs
                 self.editing_order_items.clear(); // Clear editing items
+            }
+            Message::Summary_sale => {
+                self.print_sales_summary();
             }
         }
     }
@@ -333,8 +341,37 @@ fn view_default_menu(&self, font_size: u16, title_size: u16) -> Element<Message>
         column()
             .push(text("Order History of Today").size(title_size))
             .push(order_history)
+            .push(button("Total Sales").on_press(Message::Summary_sale))
             .spacing(20)
             .into()
+    }
+    fn print_receipt(&self, order: &Order) {
+        let filename = format!("Receipt_Order_{}.txt", order.id);
+        let mut file = std::fs::File::create(filename).unwrap();
+        let content = format!(
+            "Aroimak\n=============\nReceipt for Order ID: {}\n",
+            order.id
+        );
+
+        file.write_all(content.as_bytes()).unwrap();
+        for (name, price, quantity) in &order.items {
+            let line = format!("{} x{} - {}$\n", name, quantity, price * quantity);
+            file.write_all(line.as_bytes()).unwrap();
+        }
+    }
+
+    fn print_sales_summary(&self) {
+        let mut file = std::fs::File::create("Sales_Summary.txt").unwrap();
+        let mut total_sales = 0;
+        let mut summary = String::from("Daily Sales Summary\n=============\n");
+        for order in &self.food_list {
+            let order_total: u32 = order.items.iter().map(|item| item.1 * item.2).sum();
+            summary.push_str(&format!("Order ID {}: {}$\n", order.id, order_total));
+            total_sales += order_total;
+        }
+
+        summary.push_str(&format!("\nTotal Sales: {}$", total_sales));
+        file.write_all(summary.as_bytes()).unwrap();
     }
 }
 
